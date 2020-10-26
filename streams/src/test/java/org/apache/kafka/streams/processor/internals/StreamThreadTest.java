@@ -231,7 +231,7 @@ public class StreamThreadTest {
             threadIdx,
             null,
             null,
-                new AtomicInteger());
+            new AtomicInteger());
     }
 
     private static class StateListenerStub implements StreamThread.StateListener {
@@ -1423,7 +1423,7 @@ public class StreamThreadTest {
             threadIdx,
             null,
             null,
-                new AtomicInteger());
+            new AtomicInteger());
 
         thread.setState(StreamThread.State.STARTING);
         thread.rebalanceListener().onPartitionsRevoked(Collections.emptySet());
