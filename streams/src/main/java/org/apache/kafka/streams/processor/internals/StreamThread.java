@@ -283,7 +283,7 @@ public class StreamThread extends Thread {
     private final Admin adminClient;
     private final InternalTopologyBuilder builder;
 
-    private StreamsUncaughtExceptionHandlerWrapper streamsUncaughtExceptionHandler;
+    private java.util.function.Consumer<Throwable> streamsUncaughtExceptionHandler;
     private Runnable shutdownErrorHook;
     private AtomicInteger assignmentErrorCode;
 
@@ -306,7 +306,7 @@ public class StreamThread extends Thread {
                                       final StateRestoreListener userStateRestoreListener,
                                       final int threadIdx,
                                       final Runnable shutdownErrorHook,
-                                      final StreamsUncaughtExceptionHandlerWrapper streamsUncaughtExceptionHandler) {
+                                      final java.util.function.Consumer<Throwable> streamsUncaughtExceptionHandler) {
         final String threadId = clientId + "-StreamThread-" + threadIdx;
 
         final String logPrefix = String.format("stream-thread [%s] ", threadId);
@@ -453,7 +453,7 @@ public class StreamThread extends Thread {
                         final AtomicInteger assignmentErrorCode,
                         final AtomicLong nextProbingRebalanceMs,
                         final Runnable shutdownErrorHook,
-                        final StreamsUncaughtExceptionHandlerWrapper streamsUncaughtExceptionHandler) {
+                        final java.util.function.Consumer<Throwable> streamsUncaughtExceptionHandler) {
         super(threadId);
         this.stateLock = new Object();
 
@@ -531,27 +531,6 @@ public class StreamThread extends Thread {
         try {
             runLoop();
             cleanRun = true;
-        } catch (final Exception e) {
-            // we have caught all Kafka related exceptions, and other runtime exceptions
-            // should be due to user application errors
-
-            if (e instanceof UnsupportedVersionException) {
-                final String errorMessage = e.getMessage();
-                if (errorMessage != null &&
-                    errorMessage.startsWith("Broker unexpectedly doesn't support requireStable flag on version ")) {
-
-                    log.error("Shutting down because the Kafka cluster seems to be on a too old version. " +
-                        "Setting {}=\"{}\" requires broker version 2.5 or higher.",
-                        StreamsConfig.PROCESSING_GUARANTEE_CONFIG,
-                        EXACTLY_ONCE_BETA);
-
-                    throw e;
-                }
-            }
-
-            log.error("Encountered the following exception during processing " +
-                "and the thread is going to shut down: ", e);
-            throw e;
         } finally {
             completeShutdown(cleanRun);
         }
@@ -586,10 +565,23 @@ public class StreamThread extends Thread {
                 }
             } catch (final TaskMigratedException e) {
                 handleTaskMigrated(e);
-            } catch (final Exception e) {
-                if (this.streamsUncaughtExceptionHandler.handle(e)) {
-                    throw e;
+            } catch (final UnsupportedVersionException e) {
+                final String errorMessage = e.getMessage();
+                if (errorMessage != null &&
+                    errorMessage.startsWith("Broker unexpectedly doesn't support requireStable flag on version ")) {
+
+                    log.error("Shutting down because the Kafka cluster seems to be on a too old version. " +
+                                  "Setting {}=\"{}\" requires broker version 2.5 or higher.",
+                              StreamsConfig.PROCESSING_GUARANTEE_CONFIG,
+                              EXACTLY_ONCE_BETA);
+
                 }
+                streamsUncaughtExceptionHandler.accept(e);
+            } catch (final Throwable e) {
+                log.error("Encountered the following exception during processing " +
+                              "and the thread is going to shut down: ", e);
+
+                streamsUncaughtExceptionHandler.accept(e);
             }
         }
     }
@@ -599,7 +591,7 @@ public class StreamThread extends Thread {
      *
      * @param streamsUncaughtExceptionHandler the user handler wrapped in shell to execute the action
      */
-    public void setStreamsUncaughtExceptionHandler(final StreamsUncaughtExceptionHandlerWrapper streamsUncaughtExceptionHandler) {
+    public void setStreamsUncaughtExceptionHandler(final java.util.function.Consumer<Throwable> streamsUncaughtExceptionHandler) {
         this.streamsUncaughtExceptionHandler = streamsUncaughtExceptionHandler;
     }
 
