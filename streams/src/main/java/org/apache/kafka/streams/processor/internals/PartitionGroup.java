@@ -161,12 +161,12 @@ public class PartitionGroup {
         for (final Map.Entry<TopicPartition, RecordQueue> entry : partitionQueues.entrySet()) {
             final TopicPartition partition = entry.getKey();
             final RecordQueue queue = entry.getValue();
+//
+//            fetchedMetadata.computeIfPresent(
+//                partition, (tp, m) -> wallClockTime - m.receivedTimestamp > metadataStalenessBound ? null : m
+//            );
 
-            fetchedMetadata.computeIfPresent(
-                partition, (tp, m) -> wallClockTime - m.receivedTimestamp > metadataStalenessBound ? null : m
-            );
-
-            final Metadata nullableMetadata = fetchedMetadata.get(partition);
+            final Metadata nullableMetadata = fetchedMetadata.remove(partition);
 
             if (!queue.isEmpty()) {
                 // this partition is ready for processing
