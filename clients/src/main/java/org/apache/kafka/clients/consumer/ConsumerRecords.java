@@ -59,22 +59,40 @@ public class ConsumerRecords<K, V> implements Iterable<ConsumerRecord<K, V>> {
             this.endOffset = endOffset;
         }
 
+        /**
+         * @return The timestamp of the broker response that contained this metadata
+         */
         public long receivedTimestamp() {
             return receivedTimestamp;
         }
 
+        /**
+         * @return The next position the consumer will fetch
+         */
         public long position() {
             return position;
         }
 
+        /**
+         * @return The lag between the next position to fetch and the current end of the partition
+         */
         public long lag() {
             return endOffset - position;
         }
 
+        /**
+         * @return The current first offset in the partition.
+         */
         public long beginningOffset() {
             return beginningOffset;
         }
 
+        /**
+         * @return The current last offset in the partition. The determination of the "last" offset
+         * depends on the Consumer's isolation level. Under "read_uncommitted," this is the last successfully
+         * replicated offset plus one. Under "read_committed," this is the minimum of the last successfully
+         * replicated offset plus one or the smallest offset of any open transaction.
+         */
         public long endOffset() {
             return endOffset;
         }
@@ -127,7 +145,8 @@ public class ConsumerRecords<K, V> implements Iterable<ConsumerRecord<K, V>> {
     /**
      * Get the updated metadata returned by the brokers along with this record set.
      * May be empty or partial depending on the responses from the broker during this particular poll.
-     * May also include metadata for additional partitions than the ones for which there are records in this object.
+     * May also include metadata for additional partitions than the ones for which there are records
+     * in this {@code ConsumerRecords} object.
      */
     public Map<TopicPartition, Metadata> metadata() {
         return Collections.unmodifiableMap(metadata);
