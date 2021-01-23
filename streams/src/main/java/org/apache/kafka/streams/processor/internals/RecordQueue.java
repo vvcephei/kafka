@@ -51,7 +51,7 @@ public class RecordQueue {
 
     private final Sensor droppedRecordsSensor;
 
-    RecordQueue(final TopicPartition partition,
+    public RecordQueue(final TopicPartition partition,
                 final SourceNode<?, ?, ?, ?> source,
                 final TimestampExtractor timestampExtractor,
                 final DeserializationExceptionHandler deserializationExceptionHandler,

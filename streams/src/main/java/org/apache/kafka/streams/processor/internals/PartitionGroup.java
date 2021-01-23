@@ -22,7 +22,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.metrics.Sensor;
 import org.apache.kafka.common.utils.LogContext;
 import org.apache.kafka.streams.StreamsConfig;
-import org.slf4j.Logger;
+//import org.slf4j.Logger;
 
 import java.util.Collections;
 import java.util.Comparator;
@@ -58,7 +58,7 @@ import java.util.function.Function;
  */
 public class PartitionGroup {
 
-    private  final Logger logger;
+//    private  final Logger logger;
     private final Map<TopicPartition, RecordQueue> partitionQueues;
     private final Sensor enforcedProcessingSensor;
     private final long maxTaskIdleMs;
@@ -87,12 +87,12 @@ public class PartitionGroup {
         }
     }
 
-    PartitionGroup(final LogContext logContext,
+    public PartitionGroup(final LogContext logContext,
                    final Map<TopicPartition, RecordQueue> partitionQueues,
                    final Sensor recordLatenessSensor,
                    final Sensor enforcedProcessingSensor,
                    final long maxTaskIdleMs) {
-        this.logger = logContext.logger(PartitionGroup.class);
+//        this.logger = logContext.logger(PartitionGroup.class);
         nonEmptyQueuesByTime = new PriorityQueue<>(partitionQueues.size(), Comparator.comparingLong(RecordQueue::headRecordTimestamp));
         this.partitionQueues = partitionQueues;
         this.enforcedProcessingSensor = enforcedProcessingSensor;
@@ -106,22 +106,22 @@ public class PartitionGroup {
     public void addFetchedMetadata(final TopicPartition partition, final ConsumerRecords.Metadata metadata) {
         final Long lag = metadata.lag();
         if (lag != null) {
-            logger.debug("added fetched lag {}: {}", partition, lag);
+//            logger.debug("added fetched lag {}: {}", partition, lag);
             fetchedLags.put(partition, lag);
         }
     }
 
     public boolean readyToProcess(final long wallClockTime) {
-        if (logger.isTraceEnabled()) {
-            for (final Map.Entry<TopicPartition, RecordQueue> entry : partitionQueues.entrySet()) {
-                logger.trace(
-                    "buffered/lag {}: {}/{}",
-                    entry.getKey(),
-                    entry.getValue().size(),
-                    fetchedLags.get(entry.getKey())
-                );
-            }
-        }
+//        if (logger.isTraceEnabled()) {
+//            for (final Map.Entry<TopicPartition, RecordQueue> entry : partitionQueues.entrySet()) {
+//                logger.trace(
+//                    "buffered/lag {}: {}/{}",
+//                    entry.getKey(),
+//                    entry.getValue().size(),
+//                    fetchedLags.get(entry.getKey())
+//                );
+//            }
+//        }
         // Log-level strategy:
         //  TRACE for messages that don't wait for fetches, since these may be logged at extremely high frequency
         //  DEBUG when we waited for a fetch and decided to wait some more, as configured
@@ -129,23 +129,23 @@ public class PartitionGroup {
         //  INFO  when we enforce processing, since this has to wait for fetches AND may result in disorder
 
         if (maxTaskIdleMs == StreamsConfig.MAX_TASK_IDLE_MS_DISABLED) {
-            if (logger.isTraceEnabled() && !allBuffered && totalBuffered > 0) {
-                final Set<TopicPartition> bufferedPartitions = new HashSet<>();
-                final Set<TopicPartition> emptyPartitions = new HashSet<>();
-                for (final Map.Entry<TopicPartition, RecordQueue> entry : partitionQueues.entrySet()) {
-                    if (entry.getValue().isEmpty()) {
-                        emptyPartitions.add(entry.getKey());
-                    } else {
-                        bufferedPartitions.add(entry.getKey());
-                    }
-                }
-                logger.trace("Ready for processing because max.task.idle.ms is disabled." +
-                              "\n\tThere may be out-of-order processing for this task as a result." +
-                              "\n\tBuffered partitions: {}" +
-                              "\n\tNon-buffered partitions: {}",
-                          bufferedPartitions,
-                          emptyPartitions);
-            }
+//            if (logger.isTraceEnabled() && !allBuffered && totalBuffered > 0) {
+//                final Set<TopicPartition> bufferedPartitions = new HashSet<>();
+//                final Set<TopicPartition> emptyPartitions = new HashSet<>();
+//                for (final Map.Entry<TopicPartition, RecordQueue> entry : partitionQueues.entrySet()) {
+//                    if (entry.getValue().isEmpty()) {
+//                        emptyPartitions.add(entry.getKey());
+//                    } else {
+//                        bufferedPartitions.add(entry.getKey());
+//                    }
+//                }
+//                logger.trace("Ready for processing because max.task.idle.ms is disabled." +
+//                              "\n\tThere may be out-of-order processing for this task as a result." +
+//                              "\n\tBuffered partitions: {}" +
+//                              "\n\tNon-buffered partitions: {}",
+//                          bufferedPartitions,
+//                          emptyPartitions);
+//            }
             return true;
         }
 
@@ -165,16 +165,16 @@ public class PartitionGroup {
             } else if (nullableFetchedLag == null) {
                 // must wait to fetch metadata for the partition
                 idlePartitionDeadlines.remove(partition);
-                logger.trace("Waiting to fetch data for {}", partition);
+//                logger.trace("Waiting to fetch data for {}", partition);
                 return false;
             } else if (nullableFetchedLag > 0L) {
                 // must wait to poll the data we know to be on the broker
                 idlePartitionDeadlines.remove(partition);
-                logger.debug(
-                    "Lag for {} is currently {}, but no data is buffered locally. Waiting to buffer some records.",
-                    partition,
-                    nullableFetchedLag
-                );
+//                logger.debug(
+//                    "Lag for {} is currently {}, but no data is buffered locally. Waiting to buffer some records.",
+//                    partition,
+//                    nullableFetchedLag
+//                );
                 return false;
             } else {
                 // p is known to have zero lag. wait for maxTaskIdleMs to see if more data shows up.
@@ -186,13 +186,13 @@ public class PartitionGroup {
                 idlePartitionDeadlines.putIfAbsent(partition, wallClockTime + maxTaskIdleMs);
                 final long deadline = idlePartitionDeadlines.get(partition);
                 if (wallClockTime < deadline) {
-                    logger.debug(
-                        "Lag for {} is currently 0 and current time is {}. Waiting for new data to be produced for configured idle time {} (deadline is {}).",
-                        partition,
-                        wallClockTime,
-                        maxTaskIdleMs,
-                        deadline
-                    );
+//                    logger.debug(
+//                        "Lag for {} is currently 0 and current time is {}. Waiting for new data to be produced for configured idle time {} (deadline is {}).",
+//                        partition,
+//                        wallClockTime,
+//                        maxTaskIdleMs,
+//                        deadline
+//                    );
                     return false;
                 } else {
                     // this partition is ready for processing due to the task idling deadline passing
@@ -204,23 +204,23 @@ public class PartitionGroup {
             }
         }
         if (enforced == null) {
-            logger.debug("All partitions were buffered locally, so this task is ready for processing.");
+//            logger.debug("All partitions were buffered locally, so this task is ready for processing.");
             return true;
         } else if (queued.isEmpty()) {
-            logger.debug("No partitions were buffered locally, so this task is not ready for processing.");
+//            logger.debug("No partitions were buffered locally, so this task is not ready for processing.");
             return false;
         } else {
             enforcedProcessingSensor.record(1.0d, wallClockTime);
-            logger.info("Continuing to process although some partition timestamps were not buffered locally." +
-                         "\n\tThere may be out-of-order processing for this task as a result." +
-                         "\n\tPartitions with local data: {}." +
-                         "\n\tPartitions we gave up waiting for, with their corresponding deadlines: {}." +
-                         "\n\tConfigured max.task.idle.ms: {}." +
-                         "\n\tCurrent wall-clock time: {}.",
-                     queued,
-                     enforced,
-                     maxTaskIdleMs,
-                     wallClockTime);
+//            logger.info("Continuing to process although some partition timestamps were not buffered locally." +
+//                         "\n\tThere may be out-of-order processing for this task as a result." +
+//                         "\n\tPartitions with local data: {}." +
+//                         "\n\tPartitions we gave up waiting for, with their corresponding deadlines: {}." +
+//                         "\n\tConfigured max.task.idle.ms: {}." +
+//                         "\n\tCurrent wall-clock time: {}.",
+//                     queued,
+//                     enforced,
+//                     maxTaskIdleMs,
+//                     wallClockTime);
             return true;
         }
     }
@@ -312,7 +312,7 @@ public class PartitionGroup {
      * @param rawRecords  the raw records
      * @return the queue size for the partition
      */
-    int addRawRecords(final TopicPartition partition, final Iterable<ConsumerRecord<byte[], byte[]>> rawRecords) {
+    public int addRawRecords(final TopicPartition partition, final Iterable<ConsumerRecord<byte[], byte[]>> rawRecords) {
         final RecordQueue recordQueue = partitionQueues.get(partition);
 
         if (recordQueue == null) {
