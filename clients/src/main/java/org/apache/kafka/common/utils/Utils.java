@@ -934,6 +934,14 @@ public final class Utils {
             throw exception;
     }
 
+    public static <K, E> Map<K, Set<E>> unmodifiableCopy(Map<K, Set<E>> map) {
+        final HashMap<K, Set<E>> result = new HashMap<>(map.size());
+        for (Map.Entry<K, Set<E>> entry : map.entrySet()) {
+            result.put(entry.getKey(), Collections.unmodifiableSet(entry.getValue()));
+        }
+        return Collections.unmodifiableMap(result);
+    }
+
     /**
      * An {@link AutoCloseable} interface without a throws clause in the signature
      *

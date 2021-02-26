@@ -16,8 +16,6 @@
  */
 package org.apache.kafka.streams.processor.internals;
 
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Stream;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
@@ -32,11 +30,15 @@ import org.apache.kafka.streams.state.StreamsMetadata;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 
 /**
@@ -303,26 +305,36 @@ public class StreamsMetadataState {
         return false;
     }
 
-    private Set<String> getStoresOnHost(final Map<String, List<String>> storeToSourceTopics, final Set<TopicPartition> sourceTopicPartitions) {
-        final Set<String> storesOnHost = new HashSet<>();
+    private Map<? extends String, ? extends Set<Integer>> getStoresOnHost(final Map<String, List<String>> storeToSourceTopics,
+                                                                          final Set<TopicPartition> sourceTopicPartitions) {
+        final Map<String, Set<Integer>> storesOnHost = new HashMap<>();
         for (final Map.Entry<String, List<String>> storeTopicEntry : storeToSourceTopics.entrySet()) {
+            final String store = storeTopicEntry.getKey();
+            final Set<Integer> partitions = new TreeSet<>();
             final List<String> topicsForStore = storeTopicEntry.getValue();
-            if (hasPartitionsForAnyTopics(topicsForStore, sourceTopicPartitions)) {
-                storesOnHost.add(storeTopicEntry.getKey());
+            for (final TopicPartition sourceTopicPartition : sourceTopicPartitions) {
+                if (topicsForStore.contains(sourceTopicPartition.topic())) {
+                    partitions.add(sourceTopicPartition.partition());
+                }
+            }
+            if (!partitions.isEmpty()) {
+                storesOnHost.put(store, Collections.unmodifiableSet(partitions));
             }
         }
-        return storesOnHost;
+        return Collections.unmodifiableMap(storesOnHost);
     }
 
 
     private void rebuildMetadata(final Map<HostInfo, Set<TopicPartition>> activePartitionHostMap,
                                  final Map<HostInfo, Set<TopicPartition>> standbyPartitionHostMap) {
+
+
         if (activePartitionHostMap.isEmpty() && standbyPartitionHostMap.isEmpty()) {
             allMetadata = Collections.emptyList();
             localMetadata.set(new StreamsMetadata(thisHost,
+                                                  Collections.emptyMap(),
                                                   Collections.emptySet(),
-                                                  Collections.emptySet(),
-                                                  Collections.emptySet(),
+                                                  Collections.emptyMap(),
                                                   Collections.emptySet()
             ));
             return;
@@ -334,18 +346,17 @@ public class StreamsMetadataState {
             .distinct()
             .forEach(hostInfo -> {
                 final Set<TopicPartition> activePartitionsOnHost = new HashSet<>();
-                final Set<String> activeStoresOnHost = new HashSet<>();
+                final Map<String, Set<Integer>> activeStoresOnHost = new HashMap<>();
                 if (activePartitionHostMap.containsKey(hostInfo)) {
                     activePartitionsOnHost.addAll(activePartitionHostMap.get(hostInfo));
-                    activeStoresOnHost.addAll(getStoresOnHost(storeToSourceTopics, activePartitionsOnHost));
+                    activeStoresOnHost.putAll(getStoresOnHost(storeToSourceTopics, activePartitionsOnHost));
                 }
-                activeStoresOnHost.addAll(globalStores);
 
                 final Set<TopicPartition> standbyPartitionsOnHost = new HashSet<>();
-                final Set<String> standbyStoresOnHost = new HashSet<>();
+                final Map<String, Set<Integer>> standbyStoresOnHost = new HashMap<>();
                 if (standbyPartitionHostMap.containsKey(hostInfo)) {
                     standbyPartitionsOnHost.addAll(standbyPartitionHostMap.get(hostInfo));
-                    standbyStoresOnHost.addAll(getStoresOnHost(storeToSourceTopics, standbyPartitionsOnHost));
+                    standbyStoresOnHost.putAll(getStoresOnHost(storeToSourceTopics, standbyPartitionsOnHost));
                 }
 
                 final StreamsMetadata metadata = new StreamsMetadata(hostInfo,

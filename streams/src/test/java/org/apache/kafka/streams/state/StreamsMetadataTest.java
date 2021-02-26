@@ -23,6 +23,8 @@ import org.junit.Test;
 
 import java.util.Collection;
 
+import static org.apache.kafka.common.utils.Utils.mkEntry;
+import static org.apache.kafka.common.utils.Utils.mkMap;
 import static org.apache.kafka.common.utils.Utils.mkSet;
 import static org.junit.Assert.assertTrue;
 
@@ -38,9 +40,12 @@ public class StreamsMetadataTest {
     public void setUp() {
         streamsMetadata = new StreamsMetadata(
             HOST_INFO,
-            mkSet("store1", "store2"),
+            mkMap(
+                mkEntry("store1", mkSet(0, 1)),
+                mkEntry("store2", mkSet(0, 1))
+            ),
             mkSet(TP_0, TP_1),
-            mkSet("store2"),
+            mkMap(mkEntry("store2", mkSet(1))),
             mkSet(TP_1)
         );
     }

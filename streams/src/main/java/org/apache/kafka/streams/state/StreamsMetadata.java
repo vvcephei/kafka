@@ -16,11 +16,12 @@
  */
 package org.apache.kafka.streams.state;
 
-import java.util.Objects;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.streams.KafkaStreams;
 
 import java.util.Collections;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -36,32 +37,33 @@ public class StreamsMetadata {
      * operations.
      */
     public final static StreamsMetadata NOT_AVAILABLE = new StreamsMetadata(HostInfo.unavailable(),
+                                                                            Collections.emptyMap(),
                                                                             Collections.emptySet(),
-                                                                            Collections.emptySet(),
-                                                                            Collections.emptySet(),
+                                                                            Collections.emptyMap(),
                                                                             Collections.emptySet());
 
     private final HostInfo hostInfo;
 
-    private final Set<String> stateStoreNames;
+    private final Map<String, Set<Integer>> activeStorePartitions;
+
+    private final Map<String, Set<Integer>> standbyStorePartitions;
 
     private final Set<TopicPartition> topicPartitions;
-
-    private final Set<String> standbyStateStoreNames;
 
     private final Set<TopicPartition> standbyTopicPartitions;
 
     public StreamsMetadata(final HostInfo hostInfo,
-                           final Set<String> stateStoreNames,
+                           final Map<String, Set<Integer>> activeStorePartitions,
                            final Set<TopicPartition> topicPartitions,
-                           final Set<String> standbyStateStoreNames,
+                           final Map<String, Set<Integer>> standbyStorePartitions,
                            final Set<TopicPartition> standbyTopicPartitions) {
 
         this.hostInfo = hostInfo;
-        this.stateStoreNames = stateStoreNames;
         this.topicPartitions = topicPartitions;
         this.standbyTopicPartitions = standbyTopicPartitions;
-        this.standbyStateStoreNames = standbyStateStoreNames;
+
+        this.activeStorePartitions = activeStorePartitions;
+        this.standbyStorePartitions = standbyStorePartitions;
     }
 
     /**
@@ -80,7 +82,7 @@ public class StreamsMetadata {
      * @return set of active state store names
      */
     public Set<String> stateStoreNames() {
-        return Collections.unmodifiableSet(stateStoreNames);
+        return Collections.unmodifiableSet(activeStorePartitions.keySet());
     }
 
     /**
@@ -107,7 +109,15 @@ public class StreamsMetadata {
      * @return set of standby state store names
      */
     public Set<String> standbyStateStoreNames() {
-        return Collections.unmodifiableSet(standbyStateStoreNames);
+        return Collections.unmodifiableSet(standbyStorePartitions.keySet());
+    }
+
+    public Map<String, Set<Integer>> activeStorePartitions() {
+        return activeStorePartitions;
+    }
+
+    public Map<String, Set<Integer>> standbyStorePartitions() {
+        return standbyStorePartitions;
     }
 
     public String host() {
@@ -121,34 +131,25 @@ public class StreamsMetadata {
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
         final StreamsMetadata that = (StreamsMetadata) o;
-        return Objects.equals(hostInfo, that.hostInfo)
-            && Objects.equals(stateStoreNames, that.stateStoreNames)
-            && Objects.equals(topicPartitions, that.topicPartitions)
-            && Objects.equals(standbyStateStoreNames, that.standbyStateStoreNames)
-            && Objects.equals(standbyTopicPartitions, that.standbyTopicPartitions);
+        return Objects.equals(hostInfo, that.hostInfo) && Objects.equals(activeStorePartitions, that.activeStorePartitions) && Objects.equals(standbyStorePartitions, that.standbyStorePartitions) && Objects.equals(topicPartitions, that.topicPartitions) && Objects.equals(standbyTopicPartitions, that.standbyTopicPartitions);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(hostInfo, stateStoreNames, topicPartitions, standbyStateStoreNames, standbyTopicPartitions);
+        return Objects.hash(hostInfo, activeStorePartitions, standbyStorePartitions, topicPartitions, standbyTopicPartitions);
     }
 
     @Override
     public String toString() {
-        return "StreamsMetadata {" +
-                "hostInfo=" + hostInfo +
-                ", stateStoreNames=" + stateStoreNames +
-                ", topicPartitions=" + topicPartitions +
-                ", standbyStateStoreNames=" + standbyStateStoreNames +
-                ", standbyTopicPartitions=" + standbyTopicPartitions +
-                '}';
+        return "StreamsMetadata{" +
+               "hostInfo=" + hostInfo +
+               ", activeStorePartitions=" + activeStorePartitions +
+               ", standbyStorePartitions=" + standbyStorePartitions +
+               ", topicPartitions=" + topicPartitions +
+               ", standbyTopicPartitions=" + standbyTopicPartitions +
+               '}';
     }
 }
