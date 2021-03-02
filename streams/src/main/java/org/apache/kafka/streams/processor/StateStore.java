@@ -19,6 +19,10 @@ package org.apache.kafka.streams.processor;
 import org.apache.kafka.streams.errors.StreamsException;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.internals.StoreToProcessorContextAdapter;
+import org.apache.kafka.streams.query.Query;
+import org.apache.kafka.streams.query.QueryResult;
+
+import java.util.Optional;
 
 /**
  * A storage engine for managing state maintained by a stream processor.
@@ -119,4 +123,16 @@ public interface StateStore {
      * @return {@code true} if the store is open
      */
     boolean isOpen();
+
+    default <V, R extends QueryResult<V>> R execute(Query<V, R> query) {
+        return query.constructResult(
+            Optional.empty(),
+            Optional.of(
+                new IllegalArgumentException(
+                    "This store (" + getClass() + ") doesn't know how to execute the given query (" + query + ")." +
+                    " Contact the store maintainer if you need support for a new query type."
+                )
+            )
+        );
+    }
 }

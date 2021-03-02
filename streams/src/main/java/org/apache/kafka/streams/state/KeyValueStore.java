@@ -18,8 +18,12 @@ package org.apache.kafka.streams.state;
 
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.processor.StateStore;
+import org.apache.kafka.streams.query.KeyQuery;
+import org.apache.kafka.streams.query.Query;
+import org.apache.kafka.streams.query.QueryResult;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * A key-value store that supports put/get/delete and range queries.
@@ -67,4 +71,34 @@ public interface KeyValueStore<K, V> extends StateStore, ReadOnlyKeyValueStore<K
      * @throws NullPointerException If {@code null} is used for key.
      */
     V delete(K key);
+
+    @SuppressWarnings("unchecked")
+    @Override
+    default <V1, R extends QueryResult<V1>> R execute(Query<V1, R> query) {
+        if (query instanceof KeyQuery) {
+            final KeyQuery<K, V> keyQuery = (KeyQuery<K, V>) query;
+            final K key;
+            try {
+                key = keyQuery.key();
+            } catch (final ClassCastException e) {
+                final IllegalArgumentException exception =
+                    new IllegalArgumentException(
+                        "The key in the query didn't match the actual key type expected by this store: " + keyQuery,
+                        e
+                    );
+                return (R) keyQuery.constructResult(
+                    Optional.empty(),
+                    Optional.of(exception)
+                ).withExecutionInfo("Default KeyQuery implementation from KeyValueStore");
+            }
+
+            final V actualValue = get(key);
+            return (R) keyQuery.constructResult(
+                Optional.of(actualValue),
+                Optional.empty()
+            ).withExecutionInfo("Default KeyQuery implementation from KeyValueStore");
+        } else {
+            return StateStore.super.execute(query);
+        }
+    }
 }

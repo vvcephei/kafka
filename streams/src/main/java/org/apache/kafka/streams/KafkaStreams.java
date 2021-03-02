@@ -53,6 +53,7 @@ import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.processor.StreamPartitioner;
+import org.apache.kafka.streams.processor.TaskId;
 import org.apache.kafka.streams.processor.ThreadMetadata;
 import org.apache.kafka.streams.processor.internals.ClientUtils;
 import org.apache.kafka.streams.processor.internals.DefaultKafkaClientSupplier;
@@ -66,6 +67,11 @@ import org.apache.kafka.streams.processor.internals.Task;
 import org.apache.kafka.streams.processor.internals.ThreadStateTransitionValidator;
 import org.apache.kafka.streams.processor.internals.assignment.AssignorError;
 import org.apache.kafka.streams.processor.internals.metrics.StreamsMetricsImpl;
+import org.apache.kafka.streams.query.InteractiveQueryParameters;
+import org.apache.kafka.streams.query.InteractiveQueryResponse;
+import org.apache.kafka.streams.query.KeyQuery;
+import org.apache.kafka.streams.query.Query;
+import org.apache.kafka.streams.query.QueryResult;
 import org.apache.kafka.streams.state.HostInfo;
 import org.apache.kafka.streams.state.QueryableStoreType;
 import org.apache.kafka.streams.state.StreamsMetadata;
@@ -1565,6 +1571,58 @@ public class KafkaStreams implements AutoCloseable {
         }
         validateIsRunningOrRebalancing();
         return queryableStoreProvider.getStore(storeQueryParameters);
+    }
+
+    public <V, R extends QueryResult<V>, Q extends Query<V, R>> R query(final InteractiveQueryParameters<V, R, Q> interactiveQueryParameters) {
+        final String storeName = interactiveQueryParameters.storeName();
+        if ((taskTopology == null || !taskTopology.hasStore(storeName))
+            && (globalTaskTopology == null || !globalTaskTopology.hasStore(storeName))) {
+            throw new InvalidStateStoreException(
+                "Cannot get state store " + storeName + " because no such store is registered in the topology."
+            );
+        }
+
+        final int partition = interactiveQueryParameters.partition();
+        final StateStore store = getStore(storeName, partition);
+        final Q query = interactiveQueryParameters.query();
+        return store.execute(query);
+    }
+
+    private StateStore getStore(String storeName, int partition) {
+        // TODO optimize this by keeping a map from storeName/partition to store upon each assignment completion
+        for (StreamThread thread : threads) {
+            for (Map.Entry<TaskId, Task> entry : thread.allTasks().entrySet()) {
+                if (entry.getKey().partition == partition) {
+                    return entry.getValue().getStore(storeName);
+                }
+            }
+        }
+        throw new IllegalStateException("expected to find store partition");
+    }
+
+    public static void main(String[] args) {
+        {
+            final KafkaStreams streams = new KafkaStreams((Topology) null, (Properties) null);
+            final KeyQuery<Long, String> keyQuery = new KeyQuery<Long, String>().key(9L);
+            InteractiveQueryParameters<String, KeyQuery.KeyQueryResult<String>, KeyQuery<Long, String>> queryParameters = new InteractiveQueryParameters<>();
+            InteractiveQueryParameters<String, KeyQuery.KeyQueryResult<String>, KeyQuery<Long, String>> queryParameters1 = queryParameters.storeName("asdf");
+            InteractiveQueryParameters<String, KeyQuery.KeyQueryResult<String>, KeyQuery<Long, String>> queryParameters2 = queryParameters1.partition(0);
+            InteractiveQueryParameters<String, KeyQuery.KeyQueryResult<String>, KeyQuery<Long, String>> queryParameters3 = queryParameters2.query(keyQuery);
+            final KeyQuery.KeyQueryResult<String> result = streams.query(queryParameters);
+        }
+
+        {
+            final KafkaStreams streams = new KafkaStreams((Topology) null, (Properties) null);
+            final KeyQuery<Long, String> keyQuery = new KeyQuery<Long, String>().key(9L);
+            InteractiveQueryParameters<String, KeyQuery.KeyQueryResult<String>, KeyQuery<Long, String>> queryParameters3 =
+                new InteractiveQueryParameters<String, KeyQuery.KeyQueryResult<String>, KeyQuery<Long, String>>()
+                    .storeName("asdf")
+                    .partition(0)
+                    .query(keyQuery);
+            final KeyQuery.KeyQueryResult<String> result = streams.query(
+                new InteractiveQueryParameters<String, KeyQuery.KeyQueryResult<String>, KeyQuery<Long, String>>()
+            );
+        }
     }
 
     /**
