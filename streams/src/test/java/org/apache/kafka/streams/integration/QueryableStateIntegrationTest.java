@@ -48,6 +48,8 @@ import org.apache.kafka.streams.kstream.Predicate;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.TimeWindows;
 import org.apache.kafka.streams.kstream.ValueMapper;
+import org.apache.kafka.streams.query.InteractiveQueryParameters;
+import org.apache.kafka.streams.query.KeyQuery;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
@@ -55,6 +57,7 @@ import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import org.apache.kafka.streams.state.ReadOnlySessionStore;
 import org.apache.kafka.streams.state.ReadOnlyWindowStore;
 import org.apache.kafka.streams.state.StreamsMetadata;
+import org.apache.kafka.streams.state.ValueAndTimestamp;
 import org.apache.kafka.streams.state.WindowStoreIterator;
 import org.apache.kafka.test.IntegrationTest;
 import org.apache.kafka.test.MockMapper;
@@ -839,7 +842,19 @@ public class QueryableStateIntegrationTest {
 
         for (final KeyValue<String, String> batchEntry : batch1) {
             assertEquals(Long.valueOf(batchEntry.value), myMapStore.get(batchEntry.key));
+//            final KeyQueryMetadata metadataForKey =
+//                kafkaStreams.queryMetadataForKey("queryMapValues", batchEntry.key, new StringSerializer());
+
+            final InteractiveQueryParameters<ValueAndTimestamp<Long>, KeyQuery.KeyQueryResult<ValueAndTimestamp<Long>>, KeyQuery<String, ValueAndTimestamp<Long>>> query =
+                new InteractiveQueryParameters<ValueAndTimestamp<Long>, KeyQuery.KeyQueryResult<ValueAndTimestamp<Long>>, KeyQuery<String, ValueAndTimestamp<Long>>>()
+                .storeName("queryMapValues")
+                .partition(0)
+                .query(new KeyQuery<String, ValueAndTimestamp<Long>>().key(batchEntry.key));
+            final KeyQuery.KeyQueryResult<ValueAndTimestamp<Long>> result = kafkaStreams.query(query);
+            final ValueAndTimestamp<Long> value = result.results().get();
+            assertEquals(Long.valueOf(batchEntry.value), value.value());
         }
+
     }
 
     @Test
