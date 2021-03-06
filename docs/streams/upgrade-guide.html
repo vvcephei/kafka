@@ -92,6 +92,33 @@
       this restriction will be enforced. If you wish to run more than one instance of Kafka Streams, you must configure them with different values for <code>state.dir</code>.
     </p>
 
+    <h3><a id="streams_api_changes_300" href="#streams_api_changes_300">Streams API changes in 3.0.0</a></h3>
+
+    <p>
+        We updated the config named <code>max.task.idle.ms</code> to improve the ability to handle out-of-order data
+        within a task that may be processing multiple topic-partitions (see
+        <a href="/{{version}}/documentation/streams/core-concepts.html#streams_out_of_ordering">Out-of-Order Handling</a>
+        section for more details).
+
+        Previously, the config value was interpreted to indicate how long to wait after detecting an empty input
+        buffer in the hopes of polling more data in the mean time, so we could proceed in timestamp order. However,
+        the previous behavior did not guarantee that Streams would actually try to poll again, nor did it consider
+        the current lag on that partition. This made it hard to select a good value for the config to have the desired
+        effect of minimizing out-of-order processing.
+
+        In <a href="https://cwiki.apache.org/confluence/x/JSXZCQ">KIP-695</a>, we adjusted the semantics of this config.
+        Now, the config only indicates the amount of time to wait for more records <em>after</em> the lag on a partition
+        reaches zero. In other words, even with a config value of <code>0</code>, Streams will still not proceed to
+        process out-of-order as long as it knows there is extra data for the partition on the broker. The value of the
+        config is now effectively defined as the amount of time to wait for new data to be <em>produced</em> to an
+        input topic once we catch up with the end of the topic.
+
+        The default value is still <code>0</code>. This change means that by default Streams will no longer favor
+        minimum latency over in-order processing (because in-order processing often equates to correctness).
+        If users wish to disable task idling entirely, never waiting to poll new records,
+        they can set the config value to <code>-1</code>.
+    </p>
+
     <h3><a id="streams_api_changes_280" href="#streams_api_changes_280">Streams API changes in 2.8.0</a></h3>
     <p>
         We extended <code>StreamJoined</code> to include the options <code>withLoggingEnabled()</code> and <code>withLoggingDisabled()</code> in

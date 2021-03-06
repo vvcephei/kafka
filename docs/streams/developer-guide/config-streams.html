@@ -242,8 +242,13 @@
           </tr>
           <tr class="row-even"><td>max.task.idle.ms</td>
             <td>Medium</td>
-            <td colspan="2">Maximum amount of time in milliseconds a stream task will stay idle while waiting for all partitions to contain data
-              and avoid potential out-of-order record processing across multiple input streams.</td>
+            <td colspan="2">The amount of time in milliseconds a stream task will stay idle while waiting
+              for new data to be produced to for all input partitions. Idling longer may avoid potential out-of-order
+              record processing across multiple input streams, but it also introduces processing delays if one input
+              is much higher volume than another. The value of <code>-1</code> disables the feature entirely, such
+              that Streams will process as long as any data is queued. Values of <code>0</code> or higher will
+              pause processing for a task if one input partition has no data buffered locally, but the lag on that
+              partition is positive (indicating that there is data available on the broker).</td>
             <td>0 milliseconds</td>
           </tr>
           <tr class="row-odd"><td>max.warmup.replicas</td>
@@ -604,8 +609,13 @@
           <span id="streams-developer-guide-max-task-idle-ms"></span><h4><a class="toc-backref" href="#id28">max.task.idle.ms</a><a class="headerlink" href="#max-task-idle-ms" title="Permalink to this headline"></a></h4>
           <blockquote>
             <div>
-              The maximum amount of time a task will idle without processing data when waiting for all of its input partition buffers to contain records. This can help avoid potential out-of-order
-              processing when the task has multiple input streams, as in a join, for example. Setting this to a nonzero value may increase latency but will improve time synchronization.
+              The amount of time in milliseconds a stream task will stay idle while waiting
+              for new data to be produced to for all input partitions. Idling longer may avoid potential out-of-order
+              record processing across multiple input streams, but it also introduces processing delays if one input
+              is much higher volume than another. The value of <code>-1</code> disables the feature entirely, such
+              that Streams will process as long as any data is queued. Values of <code>0</code> or higher will
+              pause processing for a task if one input partition has no data buffered locally, but the lag on that
+              partition is positive (indicating that there is data available on the broker).
             </div>
           </blockquote>
         </div>
