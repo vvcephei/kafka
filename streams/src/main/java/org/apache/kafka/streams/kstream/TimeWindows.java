@@ -16,6 +16,7 @@
  */
 package org.apache.kafka.streams.kstream;
 
+import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.streams.kstream.internals.TimeWindow;
 import org.apache.kafka.streams.processor.TimestampExtractor;
 import org.apache.kafka.streams.state.WindowBytesStoreSupplier;
@@ -94,6 +95,33 @@ public final class TimeWindows extends Windows<TimeWindow> {
         this.maintainDurationMs = maintainDurationMs;
     }
 
+    public static class TimeWindowsBuilder {
+
+        private final long size;
+
+        public TimeWindowsBuilder(long size) {
+            this.size = size;
+        }
+
+        public TimeWindows withGracePeriod(final Duration gracePeriod) {
+            final String msgPrefix = prepareMillisCheckFailMsgPrefix(gracePeriod, "gracePeriod");
+            final long gracePeriodMs = validateMillisecondDuration(gracePeriod, msgPrefix);
+            if (gracePeriodMs < 0) {
+                throw new IllegalArgumentException("Grace period must not be negative.");
+            }
+            return new TimeWindows(size, size, gracePeriodMs, DEFAULT_RETENTION_MS);
+        }
+
+        public TimeWindows withNoGracePeriod() {
+            return new TimeWindows(size, size, 0L, DEFAULT_RETENTION_MS);
+        }
+    }
+
+    public static TimeWindowsBuilder fromSize(final Duration size) {
+        final String msgPrefix = prepareMillisCheckFailMsgPrefix(size, "size");
+        return new TimeWindowsBuilder(validateMillisecondDuration(size, msgPrefix));
+    }
+
     /**
      * Return a window definition with the given window size, and with the advance interval being equal to the window
      * size.
@@ -128,7 +156,7 @@ public final class TimeWindows extends Windows<TimeWindow> {
      * @return a new window definition with default maintain duration of 1 day
      * @throws IllegalArgumentException if the specified window size is zero or negative or can't be represented as {@code long milliseconds}
      */
-    @SuppressWarnings("deprecation") // removing #of(final long sizeMs) will fix this
+    @Deprecated
     public static TimeWindows of(final Duration size) throws IllegalArgumentException {
         final String msgPrefix = prepareMillisCheckFailMsgPrefix(size, "size");
         return of(validateMillisecondDuration(size, msgPrefix));
@@ -199,7 +227,7 @@ public final class TimeWindows extends Windows<TimeWindow> {
      * @return this updated builder
      * @throws IllegalArgumentException if {@code afterWindowEnd} is negative or can't be represented as {@code long milliseconds}
      */
-    @SuppressWarnings("deprecation") // will be fixed when we remove segments from Windows
+    @Deprecated
     public TimeWindows grace(final Duration afterWindowEnd) throws IllegalArgumentException {
         final String msgPrefix = prepareMillisCheckFailMsgPrefix(afterWindowEnd, "afterWindowEnd");
         final long afterWindowEndMs = validateMillisecondDuration(afterWindowEnd, msgPrefix);
