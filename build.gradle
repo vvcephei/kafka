@@ -1674,6 +1674,20 @@ project(':streams') {
     duplicatesStrategy 'exclude'
   }
 
+  tasks.create(name: "copyDependantTestLibs", type: Copy) {
+    from (configurations.runtimeClasspath) {
+      exclude('kafka-clients*')
+    }
+    from (configurations.testRuntimeClasspath) {
+      include('*.jar')
+    }
+
+    into "$buildDir/dependant-testlibs"
+    duplicatesStrategy 'exclude'
+  }
+
+  systemTestLibs.dependsOn('jar', 'testJar', 'copyDependantTestLibs')
+
   task createStreamsVersionFile(dependsOn: determineCommitId) {
     ext.receiptFile = file("$buildDir/kafka/$buildStreamsVersionFileName")
     outputs.file receiptFile
@@ -1696,10 +1710,6 @@ project(':streams') {
       include "kafka/$buildStreamsVersionFileName"
     }
     dependsOn 'copyDependantLibs'
-  }
-
-  systemTestLibs {
-    dependsOn testJar
   }
 
   task genStreamsConfigDocs(type: JavaExec) {
